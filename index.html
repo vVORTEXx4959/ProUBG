@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Proxy</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      background: #101218;
+      color: #f1f3f8;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 850px;
+      margin: 80px auto;
+    }
+
+    h1 {
+      font-size: clamp(30px, 5vw, 48px);
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: #aeb5c5;
+      line-height: 1.6;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      margin: 28px 0 16px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 15px;
+      border: 1px solid #414858;
+      border-radius: 8px;
+      background: #1a1e28;
+      color: white;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 15px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #8c9cff;
+      color: #101218;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #status {
+      color: #aeb5c5;
+      overflow-wrap: anywhere;
+    }
+
+    #result {
+      margin-top: 25px;
+      padding: 22px;
+      border: 1px solid #414858;
+      border-radius: 12px;
+      background: #1a1e28;
+    }
+
+    #pageText {
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 550px) {
+      main {
+        margin-top: 35px;
+      }
+
+      form {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Web Proxy</h1>
+
+    <p class="description">
+      Browse approved webpages through your proxy backend.
+      Enter a URL below to retrieve its text preview.
+    </p>
+
+    <form id="proxyForm">
+      <input
+        id="urlInput"
+        type="url"
+        placeholder="https://example.com"
+        value="https://example.com"
+        aria-label="Website URL"
+        required
+      >
+
+      <button id="submitButton" type="submit">
+        Go
+      </button>
+    </form>
+
+    <p id="status" role="status">Ready.</p>
+
+    <section id="result" hidden>
+      <h2 id="pageTitle"></h2>
+      <p id="pageSource" class="description"></p>
+      <hr>
+      <div id="pageText"></div>
+    </section>
+  </main>
+
+  <script>
+    // Replace this with your deployed Cloudflare Worker URL.
+    const API_BASE =
+      "https://proubg.kayleelehner921.workers.dev";
+
+    const form = document.getElementById("proxyForm");
+    const input = document.getElementById("urlInput");
+    const button = document.getElementById("submitButton");
+    const status = document.getElementById("status");
+    const result = document.getElementById("result");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      result.hidden = true;
+      button.disabled = true;
+      status.textContent = "Loading webpage...";
+
+      try {
+        const target = new URL(input.value);
+
+        if (target.protocol !== "https:") {
+          throw new Error("Please use an HTTPS address.");
+        }
+
+        const endpoint =
+          API_BASE + "/api/fetch?url=" +
+          encodeURIComponent(target.href);
+
+        const response = await fetch(endpoint);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "The request failed."
+          );
+        }
+
+        document.getElementById("pageTitle").textContent =
+          data.title;
+
+        document.getElementById("pageSource").textContent =
+          "Retrieved from " + data.source;
+
+        document.getElementById("pageText").textContent =
+          data.text;
+
+        result.hidden = false;
+        status.textContent = "Page loaded successfully.";
+      } catch (error) {
+        status.textContent = "Error: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
